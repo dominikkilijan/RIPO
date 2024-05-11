@@ -1,12 +1,25 @@
-import training.train as train
-import gui.detection as gui
+from gui.MediaPlayerApp import MediaPlayerApp
+import torch
+
+from yolo import train, detection
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
+#jakis taki test czy mozna korzystac z gpu
+def check_device():
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print('Używane urządzenie:', device)
+
+path = "C:\\Users\\domin\\OneDrive\\Pulpit\\PWR\\RIPO\\RIPO\\data\\validation\\1s.mp4"
+
+if __name__ == "__main__":
+    #uczenie modelu
     #train.trainModel()
-    gui.detect()
 
-    print("main ended")
+    #reczne uruchamianie wykrywania
+    #detection.detect(path)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    #odtwarzacz wideo
+    app = MediaPlayerApp()
+    app.mainloop()
+
+    #check_device()
