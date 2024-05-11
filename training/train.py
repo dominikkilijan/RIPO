@@ -7,6 +7,6 @@ def trainModel():
     model = YOLO("yolov8m.pt")
 
     # Use the model
-    results = model.train(data="config.yaml", epochs=1)  # train the model
+    results = model.train(data="config.yaml", epochs=3)  # train the model
 
     print("training ended")
