@@ -9,17 +9,17 @@ def check_device():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Używane urządzenie:', device)
 
-path = "C:\\Users\\domin\\OneDrive\\Pulpit\\PWR\\RIPO\\RIPO\\data\\validation\\1s.mp4"
+path = "C:\\Users\\domin\\OneDrive\\Pulpit\\PWR\\RIPO\\RIPO\\data\\validation"
 
 if __name__ == "__main__":
     #uczenie modelu
-    #train.trainModel()
+    #train.train_model()
 
     #reczne uruchamianie wykrywania
-    #detection.detect(path)
+    detection.detect(path)
 
     #odtwarzacz wideo
-    app = MediaPlayerApp()
-    app.mainloop()
+    #app = MediaPlayerApp()
+    #app.mainloop()
 
     #check_device()
