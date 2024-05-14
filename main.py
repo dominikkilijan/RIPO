@@ -16,10 +16,10 @@ if __name__ == "__main__":
     #train.train_model()
 
     #reczne uruchamianie wykrywania
-    detection.detect(path)
+    #detection.detect(path)
 
     #odtwarzacz wideo
-    #app = MediaPlayerApp()
-    #app.mainloop()
+    app = MediaPlayerApp()
+    app.mainloop()
 
     #check_device()
