@@ -1,10 +1,12 @@
+import os
 from ultralytics import YOLO
 
+def train_model(root_dir):
+    config_path = os.path.join(root_dir, 'config.yaml')
 
-def train_model():
     print("yolo!")
 
     model = YOLO("yolov8m.pt")
-    model.train(data="config.yaml", epochs=1)
+    model.train(data=config_path, epochs=1)
 
     print("yolo ended")

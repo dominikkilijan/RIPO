@@ -8,12 +8,13 @@ import yolo.detection
 
 
 class MediaPlayerApp(tk.Tk):
-    def __init__(self):
+    def __init__(self, root_dir):
         super().__init__()
         self.title("Media Player")
         self.geometry("800x600")
         self.configure(bg="#f0f0f0")
         self.initialize_player()
+        self.root_dir = root_dir
 
     def initialize_player(self):
         self.instance = vlc.Instance()
@@ -111,7 +112,7 @@ class MediaPlayerApp(tk.Tk):
                     self.play_video()
 
     def get_latest_predict_folder(self):
-        root_folder = r"C:\Users\domin\OneDrive\Pulpit\PWR\RIPO\RIPO\runs\detect"
+        root_folder = os.path.join(self.root_dir, 'runs', 'detect')
         predict_folders = [f for f in os.listdir(root_folder) if f.startswith("predict")]
         if predict_folders:
             latest_predict_folder = max(predict_folders, key=lambda x: os.path.getmtime(os.path.join(root_folder, x)))
