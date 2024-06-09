@@ -4,6 +4,7 @@ import vlc
 from tkinter import filedialog, messagebox
 from datetime import timedelta
 import yolo.detection
+import shutil
 
 class MediaPlayerApp(tk.Tk):
     def __init__(self, root_dir):
@@ -69,28 +70,47 @@ class MediaPlayerApp(tk.Tk):
             command=self.stop,
         )
         self.stop_button.pack(side=tk.LEFT, pady=5)
-        self.fast_forward_button = tk.Button(
+
+        self.save_button = tk.Button(
             self.control_buttons_frame,
-            text="Fast Forward",
+            text="Save",
             font=("Arial", 12, "bold"),
-            bg="#2196F3",
+            bg="#607D8B",
             fg="white",
-            command=self.fast_forward,
+            command=self.save_video_as,
         )
-        self.fast_forward_button.pack(side=tk.LEFT, padx=10, pady=5)
-        self.rewind_button = tk.Button(
-            self.control_buttons_frame,
-            text="Rewind",
-            font=("Arial", 12, "bold"),
-            bg="#2196F3",
-            fg="white",
-            command=self.rewind,
-        )
-        self.rewind_button.pack(side=tk.LEFT, pady=5)
+        self.save_button.pack(side=tk.LEFT, padx=10, pady=5)
+        #
+        # self.fast_forward_button = tk.Button(
+        #     self.control_buttons_frame,
+        #     text="Fast Forward",
+        #     font=("Arial", 12, "bold"),
+        #     bg="#2196F3",
+        #     fg="white",
+        #     command=self.fast_forward,
+        # )
+        # self.fast_forward_button.pack(side=tk.LEFT, padx=10, pady=5)
+        # self.rewind_button = tk.Button(
+        #     self.control_buttons_frame,
+        #     text="Rewind",
+        #     font=("Arial", 12, "bold"),
+        #     bg="#2196F3",
+        #     fg="white",
+        #     command=self.rewind,
+        # )
+        # self.rewind_button.pack(side=tk.LEFT, pady=5)
         self.progress_bar = VideoProgressBar(
             self, self.set_video_position, bg="#e0e0e0", highlightthickness=0
         )
         self.progress_bar.pack(fill=tk.X, padx=10, pady=5)
+
+    def save_video_as(self):
+        if self.current_file:
+            save_path = filedialog.asksaveasfilename(defaultextension=".avi", filetypes=[("AVI files", "*.avi")])
+            if save_path:
+                shutil.copyfile(self.current_file, save_path)
+                messagebox.showinfo("Saved", "Video saved successfully!")
+
 
     def select_file(self):
         file_path = filedialog.askopenfilename(

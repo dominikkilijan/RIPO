@@ -2,6 +2,7 @@ from ultralytics import YOLO
 import os
 import cv2
 import shutil
+from datetime import datetime
 
 def detect(path, selected_classes):
     print("detection!")
@@ -19,7 +20,7 @@ def detect(path, selected_classes):
     results = model.predict(source=path, conf=0.25, save=False)
 
     # Stwórz nowy katalog na przefiltrowane wyniki
-    save_dir = "runs/detect/filtered_predict"
+    save_dir = "runs/detect/" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
     if os.path.exists(save_dir):
         shutil.rmtree(save_dir)
     os.makedirs(save_dir)
