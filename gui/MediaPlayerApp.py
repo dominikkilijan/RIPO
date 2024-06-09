@@ -1,11 +1,9 @@
 import os
 import tkinter as tk
 import vlc
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from datetime import timedelta
-
 import yolo.detection
-
 
 class MediaPlayerApp(tk.Tk):
     def __init__(self, root_dir):
@@ -100,25 +98,46 @@ class MediaPlayerApp(tk.Tk):
         )
         print(file_path)
         if file_path:
-            yolo.detection.detect(file_path)
-            print("detection completed!")
-            latest_predict_folder = self.get_latest_predict_folder()
-            if latest_predict_folder:
-                files = os.listdir(latest_predict_folder)
-                if files:
-                    file_path = os.path.join(latest_predict_folder, files[0])
-                    self.current_file = file_path
+            selected_classes = self.show_class_selection_dialog()
+            if selected_classes:
+                yolo.detection.detect(file_path, selected_classes)
+                print("detection completed!")
+                latest_predict_video = self.get_latest_predict_video()
+                if latest_predict_video:
+                    self.current_file = latest_predict_video
                     self.time_label.config(text="00:00:00 / " + self.get_duration_str())
                     self.play_video()
 
-    def get_latest_predict_folder(self):
-        root_folder = os.path.join(self.root_dir, 'runs', 'detect')
-        predict_folders = [f for f in os.listdir(root_folder) if f.startswith("predict")]
-        if predict_folders:
-            latest_predict_folder = max(predict_folders, key=lambda x: os.path.getmtime(os.path.join(root_folder, x)))
-            latest_predict_folder = os.path.join(root_folder, latest_predict_folder)
-            print("latest_predict_folder: " + latest_predict_folder)
-            return latest_predict_folder
+    def show_class_selection_dialog(self):
+        dialog = tk.Toplevel(self)
+        dialog.title("Select Classes")
+        dialog.geometry("300x300")
+        tk.Label(dialog, text="Select classes to detect:").pack(pady=10)
+
+        classes = ["stop_sign", "red_light", "green_light", "yellow_light"]
+        self.class_vars = {class_name: tk.BooleanVar(value=True) for class_name in classes}
+
+        for class_name, var in self.class_vars.items():
+            tk.Checkbutton(dialog, text=class_name, variable=var).pack(anchor=tk.W)
+
+        def on_submit():
+            selected_classes = [class_name for class_name, var in self.class_vars.items() if var.get()]
+            dialog.destroy()
+            if not selected_classes:
+                messagebox.showwarning("No Classes Selected", "You must select at least one class.")
+            else:
+                self.selected_classes = selected_classes
+                dialog.destroy()
+
+        tk.Button(dialog, text="Submit", command=on_submit).pack(pady=20)
+        dialog.wait_window()
+        return getattr(self, 'selected_classes', None)
+
+    def get_latest_predict_video(self):
+        root_folder = os.path.join(self.root_dir, 'runs', 'detect', 'filtered_predict')
+        video_path = os.path.join(root_folder, "filtered_output.avi")
+        if os.path.exists(video_path):
+            return video_path
         return None
 
     def get_duration_str(self):
@@ -180,7 +199,6 @@ class MediaPlayerApp(tk.Tk):
             self.time_label.config(text=f"{current_time_str} / {total_duration_str}")
         self.after(1000, self.update_video_progress)
 
-
 class VideoProgressBar(tk.Scale):
     def __init__(self, master, command, **kwargs):
         kwargs["showvalue"] = False
@@ -199,3 +217,8 @@ class VideoProgressBar(tk.Scale):
         if self.cget("state") == tk.NORMAL:
             value = (event.x / self.winfo_width()) * 100
             self.set(value)
+
+if __name__ == "__main__":
+    root_dir = os.path.dirname(os.path.abspath(__file__))
+    app = MediaPlayerApp(root_dir)
+    app.mainloop()

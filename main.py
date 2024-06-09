@@ -15,14 +15,14 @@ if __name__ == "__main__":
     print(root_dir)
 
     #uczenie modelu
-    train.train_model(root_dir)
+    #train.train_model(root_dir)
 
 
     #reczne uruchamianie wykrywania
     #detection.detect(path)
 
     #odtwarzacz wideo
-    #app = MediaPlayerApp(root_dir)
-    #app.mainloop()
+    app = MediaPlayerApp(root_dir)
+    app.mainloop()
 
     #check_device()
