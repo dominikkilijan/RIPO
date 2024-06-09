@@ -137,7 +137,7 @@ class MediaPlayerApp(tk.Tk):
     def get_latest_predict_video(self):
         root_folder = os.path.join(self.root_dir, 'runs', 'detect')
         latest_folder = max([os.path.join(root_folder, d) for d in os.listdir(root_folder)], key=os.path.getmtime)
-        video_path = os.path.join(latest_folder, "filtered_output_with_audio.avi")
+        video_path = os.path.join(latest_folder, "filtered_output_with_audio_and_beep.avi")
         if os.path.exists(video_path):
             return video_path
         return None
