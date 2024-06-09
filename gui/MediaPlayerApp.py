@@ -1,10 +1,10 @@
 import os
+import shutil
 import tkinter as tk
 import vlc
 from tkinter import filedialog, messagebox
 from datetime import timedelta
-import yolo.detection
-import shutil
+#import detection
 
 class MediaPlayerApp(tk.Tk):
     def __init__(self, root_dir):
@@ -80,25 +80,6 @@ class MediaPlayerApp(tk.Tk):
             command=self.save_video_as,
         )
         self.save_button.pack(side=tk.LEFT, padx=10, pady=5)
-        #
-        # self.fast_forward_button = tk.Button(
-        #     self.control_buttons_frame,
-        #     text="Fast Forward",
-        #     font=("Arial", 12, "bold"),
-        #     bg="#2196F3",
-        #     fg="white",
-        #     command=self.fast_forward,
-        # )
-        # self.fast_forward_button.pack(side=tk.LEFT, padx=10, pady=5)
-        # self.rewind_button = tk.Button(
-        #     self.control_buttons_frame,
-        #     text="Rewind",
-        #     font=("Arial", 12, "bold"),
-        #     bg="#2196F3",
-        #     fg="white",
-        #     command=self.rewind,
-        # )
-        # self.rewind_button.pack(side=tk.LEFT, pady=5)
         self.progress_bar = VideoProgressBar(
             self, self.set_video_position, bg="#e0e0e0", highlightthickness=0
         )
@@ -111,7 +92,6 @@ class MediaPlayerApp(tk.Tk):
                 shutil.copyfile(self.current_file, save_path)
                 messagebox.showinfo("Saved", "Video saved successfully!")
 
-
     def select_file(self):
         file_path = filedialog.askopenfilename(
             filetypes=[("Media Files", "*.mp4 *.avi *.mkv")]
@@ -120,7 +100,8 @@ class MediaPlayerApp(tk.Tk):
         if file_path:
             selected_classes = self.show_class_selection_dialog()
             if selected_classes:
-                yolo.detection.detect(file_path, selected_classes)
+                from yolo.detection import detect
+                detect(file_path, selected_classes)
                 print("detection completed!")
                 latest_predict_video = self.get_latest_predict_video()
                 if latest_predict_video:
@@ -154,8 +135,9 @@ class MediaPlayerApp(tk.Tk):
         return getattr(self, 'selected_classes', None)
 
     def get_latest_predict_video(self):
-        root_folder = os.path.join(self.root_dir, 'runs', 'detect', 'filtered_predict')
-        video_path = os.path.join(root_folder, "filtered_output.avi")
+        root_folder = os.path.join(self.root_dir, 'runs', 'detect')
+        latest_folder = max([os.path.join(root_folder, d) for d in os.listdir(root_folder)], key=os.path.getmtime)
+        video_path = os.path.join(latest_folder, "filtered_output_with_audio.avi")
         if os.path.exists(video_path):
             return video_path
         return None
@@ -169,6 +151,7 @@ class MediaPlayerApp(tk.Tk):
 
     def play_video(self):
         if not self.playing_video:
+            print(f"Playing vvideo: {self.current_file}")  # Debug print
             media = self.instance.media_new(self.current_file)
             self.media_player.set_media(media)
             self.media_player.set_hwnd(self.media_canvas.winfo_id())
