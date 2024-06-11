@@ -108,7 +108,7 @@ def detect(path, selected_classes):
 
     with open(new_objects_path, 'r') as file:
         for line in file:
-            beep_start_time = (line) / fps
+            beep_start_time = float(line.strip()) / fps
             add_beep_to_video(save_video_path, beep_path, final_video_with_beep, beep_start_time)
 
 def save_filtered_results_as_video(results, save_path, fps=fps):
