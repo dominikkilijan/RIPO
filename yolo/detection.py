@@ -31,6 +31,13 @@ def detect(path, selected_classes):
     yolo_output_lines = []
     line_indices = {}
 
+    filtered_video_results = []
+    for result in results:
+        if hasattr(result, 'boxes'):
+            filtered_video_boxes = [box for box in result.boxes if box.cls in selected_class_indices]
+            result.boxes = filtered_video_boxes  # Zmienione z 'result.video_boxes' na 'result.boxes'
+            filtered_video_results.append(result)
+
     for i, result in enumerate(results):
         if hasattr(result, 'boxes'):
             filtered_boxes = [box for box in result.boxes if box.cls in selected_class_indices]
@@ -91,7 +98,8 @@ def detect(path, selected_classes):
 
     temp_video_path = os.path.join(save_dir, "filtered_output_temp.avi")
     save_video_path = os.path.join(save_dir, "filtered_output.avi")
-    save_filtered_results_as_video(filtered_results, temp_video_path)
+    save_filtered_results_as_video(filtered_video_results, temp_video_path)
+    # save_filtered_results_as_video(filtered_results, temp_video_path)
 
     add_original_audio_to_video(path, temp_video_path, save_video_path)
 
@@ -100,7 +108,7 @@ def detect(path, selected_classes):
 
     with open(new_objects_path, 'r') as file:
         for line in file:
-            beep_start_time = int(line.strip()) / fps
+            beep_start_time = (line) / fps
             add_beep_to_video(save_video_path, beep_path, final_video_with_beep, beep_start_time)
 
 def save_filtered_results_as_video(results, save_path, fps=fps):
