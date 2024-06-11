@@ -1,3 +1,4 @@
+import logging
 from ultralytics import YOLO
 import os
 import cv2
@@ -13,9 +14,11 @@ def detect(path, selected_classes):
     # Nasz wyuczony model
     model = YOLO("best.pt")
 
+    # Mapa indeksów do nazw klas
     class_map = {0: 'stop_sign', 1: 'red_light', 2: 'green_light', 3: 'yellow_light'}
     selected_class_indices = [index for index, name in class_map.items() if name in selected_classes]
 
+    # Uruchomienie detekcji
     results = model.predict(source=path, conf=0.25, save=False)
 
     save_dir = "runs/detect/" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
@@ -23,37 +26,61 @@ def detect(path, selected_classes):
         shutil.rmtree(save_dir)
     os.makedirs(save_dir)
 
+    # Filtruj wyniki na podstawie wybranych klas
     filtered_results = []
-    for result in results:
+    yolo_output_lines = []
+    line_indices = {}
+
+    for i, result in enumerate(results):
         if hasattr(result, 'boxes'):
             filtered_boxes = [box for box in result.boxes if box.cls in selected_class_indices]
-            result.boxes = filtered_boxes
-            filtered_results.append(result)
+            if filtered_boxes:
+                result.boxes = filtered_boxes
+                filtered_results.append(result)
+                objects = ', '.join([str(box.cls.item()) for box in filtered_boxes])
+                line = f'cls: tensor([{objects}])'
+                yolo_output_lines.append(line)
+                for box in filtered_boxes:
+                    obj = str(box.cls.item())
+                    if obj not in line_indices:
+                        line_indices[obj] = [i]
+                    elif i - line_indices[obj][-1] == 1:
+                        line_indices[obj].append(i)
+                    else:
+                        line_indices[obj] = [i]
 
+    # Sprawdź, które obiekty wystąpiły pięć razy z rzędu
+    valid_objects = {obj: indices for obj, indices in line_indices.items() if len(indices) >= 5 and all(indices[j] == indices[j - 1] + 1 for j in range(1, 5))}
+
+    new_objects_lines = [str(indices[0]) for indices in valid_objects.values()]
+
+    # Zapisz wyniki do plików
     output_file_path = os.path.join(save_dir, "yolo_output.txt")
     new_objects_path = os.path.join(save_dir, "new_objects.txt")
 
     with open(output_file_path, 'w') as f_all:
-        for result in filtered_results:
-            if hasattr(result, 'boxes'):
-                for box in result.boxes:
-                    f_all.write(f'cls: tensor([{box.cls.item()}])\n')
+        f_all.write('\n'.join(yolo_output_lines))
 
-    line_indices = {}
+    with open(new_objects_path, 'w') as file:
+        file.write('\n'.join(new_objects_lines))
+
 
     with open(output_file_path, 'r') as file:
         lines = file.readlines()
 
+    line_indices = {}
+
     for i, line in enumerate(lines):
         if line.startswith('cls: tensor(['):
-            obj = line.strip()[12:-2]
-            if obj:
-                if obj not in line_indices:
-                    line_indices[obj] = [i]
-                elif i - line_indices[obj][-1] == 1:
-                    line_indices[obj].append(i)
-                else:
-                    line_indices[obj] = [i]
+            objects = line.strip()[12:-2].split(', ')
+            for obj in objects:
+                if obj:
+                    if obj not in line_indices:
+                        line_indices[obj] = [i]
+                    elif i - line_indices[obj][-1] == 1:
+                        line_indices[obj].append(i)
+                    else:
+                        line_indices[obj] = [i]
 
     valid_objects = {obj: indices for obj, indices in line_indices.items() if len(indices) >= 5 and all(indices[j] == indices[j - 1] + 1 for j in range(1, 5))}
 
@@ -76,8 +103,6 @@ def detect(path, selected_classes):
             beep_start_time = int(line.strip()) / fps
             add_beep_to_video(save_video_path, beep_path, final_video_with_beep, beep_start_time)
 
-    print("Filtered results saved with audio and beep.")
-
 def save_filtered_results_as_video(results, save_path, fps=fps):
     height, width = results[0].orig_img.shape[:2]
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -90,7 +115,6 @@ def save_filtered_results_as_video(results, save_path, fps=fps):
     out.release()
 
 def add_original_audio_to_video(original_video_path, temp_video_path, final_video_path):
-    # Extract original audio
     original_clip = VideoFileClip(original_video_path)
     audio = original_clip.audio
 
