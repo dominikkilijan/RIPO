@@ -151,7 +151,6 @@ class MediaPlayerApp(tk.Tk):
 
     def play_video(self):
         if not self.playing_video:
-            print(f"Playing vvideo: {self.current_file}")  # Debug print
             media = self.instance.media_new(self.current_file)
             self.media_player.set_media(media)
             self.media_player.set_hwnd(self.media_canvas.winfo_id())
