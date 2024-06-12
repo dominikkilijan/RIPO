@@ -6,7 +6,7 @@ def train_model(root_dir):
 
     print("yolo!")
 
-    model = YOLO("yolov8m.pt")
+    model = YOLO("best.pt")
     model.train(data=config_path, epochs=1)
 
     print("yolo ended")
