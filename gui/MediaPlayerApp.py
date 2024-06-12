@@ -118,7 +118,7 @@ class MediaPlayerApp(tk.Tk):
         if file_path:
             selected_classes = self.show_class_selection_dialog()
             if selected_classes:
-                detect(file_path, selected_classes, self.color_scheme.get(), not self.add_beep.get())
+                detect(file_path, selected_classes, self.color_scheme.get(), self.add_beep.get())
                 print("detection completed!")
                 latest_predict_video = self.get_latest_predict_video()
                 if latest_predict_video:
