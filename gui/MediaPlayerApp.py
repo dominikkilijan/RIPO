@@ -4,16 +4,18 @@ import tkinter as tk
 import vlc
 from tkinter import filedialog, messagebox
 from datetime import timedelta
-#import detection
+from yolo.detection import detect
 
 class MediaPlayerApp(tk.Tk):
     def __init__(self, root_dir):
         super().__init__()
         self.title("Media Player")
-        self.geometry("800x600")
-        self.configure(bg="#f0f0f0")
-        self.initialize_player()
+        self.geometry("1000x800")
+        self.configure(bg="#2c3e50")
         self.root_dir = root_dir
+        self.color_scheme = tk.StringVar(value='default')
+        self.add_beep = tk.BooleanVar(value=True)
+        self.initialize_player()
 
     def initialize_player(self):
         self.instance = vlc.Instance()
@@ -29,34 +31,36 @@ class MediaPlayerApp(tk.Tk):
         self.select_file_button = tk.Button(
             self,
             text="Select File",
-            font=("Arial", 12, "bold"),
+            font=("Arial", 14, "bold"),
+            bg="#3498db",
+            fg="white",
             command=self.select_file,
         )
-        self.select_file_button.pack(pady=5)
+        self.select_file_button.pack(pady=10)
         self.time_label = tk.Label(
             self,
             text="00:00:00 / 00:00:00",
-            font=("Arial", 12, "bold"),
-            fg="#555555",
-            bg="#f0f0f0",
+            font=("Arial", 14, "bold"),
+            fg="#ecf0f1",
+            bg="#2c3e50",
         )
-        self.time_label.pack(pady=5)
-        self.control_buttons_frame = tk.Frame(self, bg="#f0f0f0")
-        self.control_buttons_frame.pack(pady=5)
+        self.time_label.pack(pady=10)
+        self.control_buttons_frame = tk.Frame(self, bg="#2c3e50")
+        self.control_buttons_frame.pack(pady=10)
         self.play_button = tk.Button(
             self.control_buttons_frame,
             text="Play",
-            font=("Arial", 12, "bold"),
-            bg="#4CAF50",
+            font=("Arial", 14, "bold"),
+            bg="#27ae60",
             fg="white",
             command=self.play_video,
         )
-        self.play_button.pack(side=tk.LEFT, padx=5, pady=5)
+        self.play_button.pack(side=tk.LEFT, padx=10, pady=5)
         self.pause_button = tk.Button(
             self.control_buttons_frame,
             text="Pause",
-            font=("Arial", 12, "bold"),
-            bg="#FF9800",
+            font=("Arial", 14, "bold"),
+            bg="#e67e22",
             fg="white",
             command=self.pause_video,
         )
@@ -64,26 +68,40 @@ class MediaPlayerApp(tk.Tk):
         self.stop_button = tk.Button(
             self.control_buttons_frame,
             text="Stop",
-            font=("Arial", 12, "bold"),
-            bg="#F44336",
+            font=("Arial", 14, "bold"),
+            bg="#e74c3c",
             fg="white",
             command=self.stop,
         )
-        self.stop_button.pack(side=tk.LEFT, pady=5)
+        self.stop_button.pack(side=tk.LEFT, padx=10, pady=5)
 
         self.save_button = tk.Button(
             self.control_buttons_frame,
             text="Save",
-            font=("Arial", 12, "bold"),
-            bg="#607D8B",
+            font=("Arial", 14, "bold"),
+            bg="#34495e",
             fg="white",
             command=self.save_video_as,
         )
         self.save_button.pack(side=tk.LEFT, padx=10, pady=5)
         self.progress_bar = VideoProgressBar(
-            self, self.set_video_position, bg="#e0e0e0", highlightthickness=0
+            self, self.set_video_position, bg="#bdc3c7", highlightthickness=0
         )
-        self.progress_bar.pack(fill=tk.X, padx=10, pady=5)
+        self.progress_bar.pack(fill=tk.X, padx=10, pady=10)
+
+        self.options_frame = tk.Frame(self, bg="#2c3e50")
+        self.options_frame.pack(pady=10)
+
+        self.beep_frame = tk.Frame(self.options_frame, bg="#2c3e50", bd=2, relief=tk.GROOVE)
+        self.beep_frame.pack(side=tk.LEFT, padx=20, pady=10)
+        tk.Checkbutton(self.beep_frame, text="Without beep sound", variable=self.add_beep, bg="#2c3e50", fg="#ecf0f1", font=("Arial", 12), onvalue=False, offvalue=True).pack(padx=10, pady=10)
+
+        self.color_scheme_frame = tk.Frame(self.options_frame, bg="#2c3e50", bd=2, relief=tk.GROOVE)
+        self.color_scheme_frame.pack(side=tk.LEFT, padx=20, pady=10)
+        tk.Label(self.color_scheme_frame, text="Select Color Scheme:", bg="#2c3e50", fg="#ecf0f1", font=("Arial", 12)).pack(pady=10)
+        tk.Radiobutton(self.color_scheme_frame, text="Default", variable=self.color_scheme, value='default', bg="#2c3e50", fg="#ecf0f1", font=("Arial", 12)).pack(anchor=tk.W)
+        tk.Radiobutton(self.color_scheme_frame, text="High Contrast", variable=self.color_scheme, value='high_contrast', bg="#2c3e50", fg="#ecf0f1", font=("Arial", 12)).pack(anchor=tk.W)
+        tk.Radiobutton(self.color_scheme_frame, text="Colorblind Friendly", variable=self.color_scheme, value='colorblind_friendly', bg="#2c3e50", fg="#ecf0f1", font=("Arial", 12)).pack(anchor=tk.W)
 
     def save_video_as(self):
         if self.current_file:
@@ -100,8 +118,7 @@ class MediaPlayerApp(tk.Tk):
         if file_path:
             selected_classes = self.show_class_selection_dialog()
             if selected_classes:
-                from yolo.detection import detect
-                detect(file_path, selected_classes)
+                detect(file_path, selected_classes, self.color_scheme.get(), not self.add_beep.get())
                 print("detection completed!")
                 latest_predict_video = self.get_latest_predict_video()
                 if latest_predict_video:
