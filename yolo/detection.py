@@ -8,18 +8,47 @@ from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip
 
 fps = 30
 
-def detect(path, selected_classes):
+default_colors = {
+    'stop_sign': (0, 0, 255),  # Blue
+    'red_light': (255, 0, 0),  # Red
+    'green_light': (0, 255, 0),  # Green
+    'yellow_light': (0, 255, 255)  # Yellow
+}
+
+high_contrast_colors = {
+    'stop_sign': (0, 0, 0),  # Black
+    'red_light': (255, 255, 255),  # White
+    'green_light': (255, 255, 0),  # Cyan
+    'yellow_light': (0, 0, 255)  # Blue
+}
+
+colorblind_friendly_colors = {
+    'stop_sign': (0, 0, 255),  # Blue
+    'red_light': (255, 165, 0),  # Orange
+    'green_light': (0, 128, 0),  # Dark Green
+    'yellow_light': (75, 0, 130)  # Indigo
+}
+
+class_map = {0: 'stop_sign', 1: 'red_light', 2: 'green_light', 3: 'yellow_light'}
+
+def detect(path, selected_classes, color_scheme='default', add_beep=True):
     print("Detection started!")
 
-    # Nasz wyuczony model
+    # Wybierz zestaw kolorów na podstawie wybranego schematu
+    if color_scheme == 'high_contrast':
+        colors = high_contrast_colors
+    elif color_scheme == 'colorblind_friendly':
+        colors = colorblind_friendly_colors
+    else:
+        colors = default_colors
+
     model = YOLO("best.pt")
 
     # Mapa indeksów do nazw klas
-    class_map = {0: 'stop_sign', 1: 'red_light', 2: 'green_light', 3: 'yellow_light'}
     selected_class_indices = [index for index, name in class_map.items() if name in selected_classes]
 
     # Uruchomienie detekcji
-    results = model.predict(source=path, conf=0.25, save=False)
+    results = model.predict(source=path, conf=0.55, save=False)
 
     save_dir = "runs/detect/" + datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
     if os.path.exists(save_dir):
@@ -59,7 +88,7 @@ def detect(path, selected_classes):
     # Sprawdź, które obiekty wystąpiły pięć razy z rzędu
     valid_objects = {obj: indices for obj, indices in line_indices.items() if len(indices) >= 5 and all(indices[j] == indices[j - 1] + 1 for j in range(1, 5))}
 
-    new_objects_lines = [str(indices[0]) for indices in valid_objects.values()]
+    new_objects_lines = [f"{obj} {indices[0]}" for obj, indices in valid_objects.items()]
 
     # Zapisz wyniki do plików
     output_file_path = os.path.join(save_dir, "yolo_output.txt")
@@ -70,7 +99,6 @@ def detect(path, selected_classes):
 
     with open(new_objects_path, 'w') as file:
         file.write('\n'.join(new_objects_lines))
-
 
     with open(output_file_path, 'r') as file:
         lines = file.readlines()
@@ -98,28 +126,36 @@ def detect(path, selected_classes):
 
     temp_video_path = os.path.join(save_dir, "filtered_output_temp.avi")
     save_video_path = os.path.join(save_dir, "filtered_output.avi")
-    save_filtered_results_as_video(filtered_video_results, temp_video_path)
-    # save_filtered_results_as_video(filtered_results, temp_video_path)
+    save_filtered_results_as_video(filtered_video_results, temp_video_path, colors)
 
     add_original_audio_to_video(path, temp_video_path, save_video_path)
 
-    beep_path = "beep.wav"
-    final_video_with_beep = os.path.join(save_dir, "filtered_output.avi")
+    if add_beep:
+        final_video_with_beep = os.path.join(save_dir, "filtered_output_with_beep.avi")
+        beep_intervals = detect_intervals(yolo_output_lines, fps)
+        add_beep_to_video(save_video_path, "beep-02.wav", final_video_with_beep, beep_intervals)
+    else:
+        final_video_with_beep = save_video_path
 
-    with open(new_objects_path, 'r') as file:
-        for line in file:
-            beep_start_time = float(line.strip()) / fps
-            add_beep_to_video(save_video_path, beep_path, final_video_with_beep, beep_start_time)
-
-def save_filtered_results_as_video(results, save_path, fps=fps):
+def save_filtered_results_as_video(results, save_path, colors, fps=fps):
     height, width = results[0].orig_img.shape[:2]
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter(save_path, fourcc, fps, (width, height))
 
+    box_thickness = 3
+    font_scale = 1.5
     for result in results:
-        frame = result.plot()
+        frame = result.orig_img.copy()
+        for box in result.boxes:
+            cls_index = box.cls.item()
+            cls_name = class_map[int(cls_index)]
+            color = colors[cls_name]
+            confidence = box.conf.item() * 100
+            label = f'{cls_name} {confidence:.2f}%'
+            x1, y1, x2, y2 = map(int, box.xyxy[0])
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, box_thickness)
+            cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, box_thickness)
         out.write(frame)
-
     out.release()
 
 def add_original_audio_to_video(original_video_path, temp_video_path, final_video_path):
@@ -133,14 +169,60 @@ def add_original_audio_to_video(original_video_path, temp_video_path, final_vide
 
     os.remove(temp_video_path)
 
-def add_beep_to_video(video_path, beep_path, output_path, beep_start_time):
+def detect_intervals(yolo_output_lines, fps):
+    object_intervals = {}
+    current_objects = set()
+
+    for frame_idx, line in enumerate(yolo_output_lines):
+        detected_objects = set(line.strip()[12:-2].split(', '))
+        new_objects = detected_objects - current_objects
+        missing_objects = current_objects - detected_objects
+
+        for obj in new_objects:
+            if obj not in object_intervals:
+                object_intervals[obj] = []
+            object_intervals[obj].append([frame_idx / fps])
+
+        for obj in missing_objects:
+            if obj in object_intervals and len(object_intervals[obj][-1]) == 1:
+                object_intervals[obj][-1].append(frame_idx / fps)
+
+        current_objects = detected_objects
+
+    for obj in current_objects:
+        if obj in object_intervals and len(object_intervals[obj][-1]) == 1:
+            object_intervals[obj][-1].append(len(yolo_output_lines) / fps)
+            beep_intervals = []
+    for intervals in object_intervals.values():
+        for start, end in intervals:
+            beep_intervals.append((start, end))
+
+    return beep_intervals
+
+def add_beep_to_video(video_path, beep_path, output_path, beep_intervals):
     video_clip = VideoFileClip(video_path)
-    beep_sound = AudioFileClip(beep_path).set_start(beep_start_time)
+    try:
+        beep_sound = AudioFileClip(beep_path)
+        beep_duration = beep_sound.duration
+        if beep_duration == 0:
+            raise ValueError("Beep sound duration is zero.")
+    except Exception as e:
+        print(f"Error loading beep sound: {e}")
+        return
+    
+    beep_clips = []
+    for start_time, end_time in beep_intervals:
+        interval_duration = end_time - start_time
+        if interval_duration > beep_duration:
+            interval_duration = beep_duration
+        print(f"Adding beep from {start_time} to {start_time + interval_duration}, duration: {interval_duration}")
+        beep_clip = beep_sound.subclip(0, interval_duration).set_start(start_time)
+        beep_clips.append(beep_clip)
 
     if video_clip.audio is not None:
-        final_audio = CompositeAudioClip([video_clip.audio, beep_sound])
+        final_audio = CompositeAudioClip([video_clip.audio] + beep_clips)
         final_clip = video_clip.set_audio(final_audio)
     else:
-        final_clip = video_clip.set_audio(beep_sound)
+        final_clip = video_clip.set_audio(CompositeAudioClip(beep_clips))
 
     final_clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
